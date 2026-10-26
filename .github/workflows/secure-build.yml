@@ -1,8 +1,8 @@
 name: secure-build
 
-# Reusable workflow. Step 4: build a multi-arch image, push it to GHCR, scan it
-# with Trivy, generate an SBOM with Syft, then sign the image and attach the SBOM
-# with cosign (keyless). Build provenance comes in a later pull request.
+# Reusable workflow. Step 5: build a multi-arch image, push it to GHCR, scan it
+# with Trivy, generate an SBOM with Syft, sign the image and attach the SBOM with
+# cosign (keyless), and attach signed build provenance.
 
 on:
   workflow_call:
@@ -37,7 +37,8 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write   # lets the job request a short-lived identity token for keyless signing
+      id-token: write       # lets the job request a short-lived identity token for keyless signing
+      attestations: write   # lets the job store build provenance attestations
     outputs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
@@ -121,3 +122,11 @@ jobs:
         env:
           IMAGE: ${{ inputs.image }}
           DIGEST: ${{ steps.push.outputs.digest }}
+
+      # Signed record of how, where and from which commit this image was built.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ inputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

@@ -1,7 +1,8 @@
 name: secure-build
 
-# Reusable workflow. Step 2 of 4: build a multi-arch image, push it to GHCR,
-# and scan it with Trivy. SBOM, signing and attestation come in later pull requests.
+# Reusable workflow. Step 3: build a multi-arch image, push it to GHCR, scan it
+# with Trivy, and generate an SBOM with Syft. Signing and attestation come in
+# later pull requests.
 
 on:
   workflow_call:
@@ -90,3 +91,14 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           format: table
+
+      # Generate a software bill of materials for the exact image that was scanned.
+      # Runs only if the scan passed. The SBOM is stored with the workflow run for now;
+      # the signing step will later attach it to the image as a signed attestation.
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          artifact-name: sbom.spdx.json

@@ -1,7 +1,7 @@
 name: secure-build
 
-# Reusable workflow. Step 1 of 4: build a multi-arch image and push it to GHCR.
-# Scanning, SBOM, signing and attestation are added in later pull requests.
+# Reusable workflow. Step 2 of 4: build a multi-arch image, push it to GHCR,
+# and scan it with Trivy. SBOM, signing and attestation come in later pull requests.
 
 on:
   workflow_call:
@@ -18,6 +18,10 @@ on:
         description: "Runner to use (GitHub-hosted by default)"
         type: string
         default: "ubuntu-24.04"
+      severity:
+        description: "Vulnerability severities that fail the build"
+        type: string
+        default: "CRITICAL,HIGH"
     outputs:
       digest:
         description: "Digest of the pushed image"
@@ -70,3 +74,19 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      # Scan the exact image that was pushed, by digest, not by a movable tag.
+      # If this step fails, the later steps (SBOM, signing) never run, so the
+      # image stays unsigned and the cluster will refuse to run it.
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ inputs.image }}@${{ steps.push.outputs.digest }}
+          vuln-type: "os,library"
+          severity: ${{ inputs.severity }}
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table

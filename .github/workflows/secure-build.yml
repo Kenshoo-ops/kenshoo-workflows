@@ -41,7 +41,7 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - name: Check out the caller's repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up QEMU (needed to build arm64 on an x64 runner)
         uses: docker/setup-qemu-action@v3

@@ -1,8 +1,8 @@
 name: secure-build
 
-# Reusable workflow. Step 3: build a multi-arch image, push it to GHCR, scan it
-# with Trivy, and generate an SBOM with Syft. Signing and attestation come in
-# later pull requests.
+# Reusable workflow. Step 4: build a multi-arch image, push it to GHCR, scan it
+# with Trivy, generate an SBOM with Syft, then sign the image and attach the SBOM
+# with cosign (keyless). Build provenance comes in a later pull request.
 
 on:
   workflow_call:
@@ -37,6 +37,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write   # lets the job request a short-lived identity token for keyless signing
     outputs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
@@ -102,3 +103,21 @@ jobs:
           format: spdx-json
           output-file: sbom.spdx.json
           artifact-name: sbom.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Sign the image by digest. Keyless: the certificate records that this
+      # signature came from this workflow, and expires within minutes.
+      - name: Sign image with cosign
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+        env:
+          IMAGE: ${{ inputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+
+      # Attach the SBOM as a signed statement about this exact image digest.
+      - name: Attach SBOM as signed attestation
+        run: cosign attest --yes --type spdxjson --predicate sbom.spdx.json "${IMAGE}@${DIGEST}"
+        env:
+          IMAGE: ${{ inputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}

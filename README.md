@@ -150,7 +150,7 @@ A successful result names the repository and workflow that built the image and t
 - **Not meant for pull requests from forks or Dependabot.** Those runs get a restricted token and no `id-token`, so signing fails. Run `secure-build` on pushes to your main branch or on tags.
 - **Signatures are written to a public transparency log (Sigstore).** Use it for public software, and do not build images whose contents or names must stay private.
 - **Provenance attestations in private repositories may need a paid GitHub plan.** The workflow is tested with public repositories.
-- **Actions are pinned by version tag, not commit SHA.** Dependabot keeps them current. Pinning by SHA is planned.
+- **Callers must reference this workflow by release tag, not by commit SHA.** The signer rule in kenshoo-platform matches `refs/tags/v*`. The actions used inside this workflow are pinned by commit SHA, and Dependabot proposes updates after a 7-day cooldown.
 
 ## Design principles
 

@@ -1,0 +1,9 @@
+name: gate-test
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  x:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "${{ github.event.pull_request.title }}"
